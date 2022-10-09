@@ -206,40 +206,39 @@ pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels
   int y = (index / pixel_width) - radious / 2;
   int total_pixels = radious * radious;
 
-  // Sections are slow, add parallel to the followin
-  //#pragma omp parallel sections
-  //{
-  //  #pragma omp section
-  //  {
+  #pragma omp parallel sections
+  {
+    #pragma omp section
+    {
       for (long i = y; i < y + radious; i++) {
         for (long j = x; j < x + radious; j++) {
-          if (i >= 0 && i < pixel_width && j >= 0 && j < pixel_length) {
+          if (i >= 0 && i < pixel_length && j >= 0 && j < pixel_width) {
             mean_red += pixels[i * pixel_width + j].red;
           }
         }
       }
-//  }
-  //  #pragma omp section
-  //  {
+    }
+    #pragma omp section
+    {
       for (long i = y; i < y + radious; i++) {
         for (long j = x; j < x + radious; j++) {
-          if (i >= 0 && i < pixel_width && j >= 0 && j < pixel_length) {
+          if (i >= 0 && i < pixel_length && j >= 0 && j < pixel_width) {
             mean_green += pixels[i * pixel_width + j].green;
           }
         }
       }
-  //  }
-  //  #pragma omp section
-  //  {
+    }
+    #pragma omp section
+    {
       for (long i = y; i < y + radious; i++) {
         for (long j = x; j < x + radious; j++) {
-          if (i >= 0 && i < pixel_width && j >= 0 && j < pixel_length) {
+          if (i >= 0 && i < pixel_length && j >= 0 && j < pixel_width) {
             mean_blue += pixels[i * pixel_width + j].blue;
           }
         }
       }
-  //  }
-  //}
+    }
+  }
 
   return pixelCreate(mean_red / total_pixels, mean_green / total_pixels, mean_blue / total_pixels);
 }
@@ -267,7 +266,7 @@ imageType *imageModifyBlur(const imageType *image, int blur_factor)
   
   imageType *img_tmp = imageCopy(image);
 
-  //#pragma omp parallel for
+  #pragma omp parallel for
   for (long i = 0; i < image -> pixel_num; i++) {
     img_tmp -> pixels[i] = *pixelGetRadiousMean(i, blur_factor, image -> pixels, image -> width, image -> length, "rgb"); 
   }
@@ -291,7 +290,7 @@ int main()
 {
   const double timeStart = omp_get_wtime();
 
-  imageType *img = imageCreate("cotorro.bmp");
+  imageType *img = imageCreate("casitas.bmp");
   imageType *img_blur = imageModifyBlur(img, 10);
   img_blur -> img_path = "image_blur.bmp";
 
