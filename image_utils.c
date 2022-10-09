@@ -195,55 +195,53 @@ imageType *imageModifyMirror(const imageType *image, char *axis)
 
 }
 
-pixelType *pixelGetRadiousMean(long position, long radious, const pixelType *pixels, long pixel_num, char *components)
+pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels, long pixel_num, long pixel_width, long pixel_length, char *components)
 {
   if (pixels == NULL) die("Null value on pixels sent to pixelGetRadiousMean");
-  if (position < 0) die("Position is negative on pixelGetRadiousMean");
+  if (index < 0) die("Position is negative on pixelGetRadiousMean");
   if (components == NULL) die("Null component sent to pixelGetRadiousMean");
 
   int mean_red = 0, mean_blue = 0, mean_green = 0;
-  int rad_number = radious * radious;
+  int x = (index % pixel_width) - pixel_length / 2;
+  int y = (index / pixel_width) - pixel_width / 2;
+  int total_radious = radious * radious;
 
-  // Sections are slow
-  #pragma omp parallel sections
-  {
-    #pragma omp section
-    {
-      for (long i = (position - rad_number / 2); i < position + rad_number / 2; i++) {
-        printf("i: %ld\n", i);
-        if (i % radious == 0) {
-          i *= i / radious;
-        }
-        if (i >= 0 && i <= pixel_num) {
-          mean_red += pixels[i].red;
+  // Sections are slow, add parallel to the followin
+  //#pragma omp parallel sections
+  //{
+  //  #pragma omp section
+  //  {
+      for (long i = y; i < y + radious; i++) {
+        for (long j = x; j < x + radious; j++) {
+          if (i >= 0 && i < radious && j >= 0 && j < radious) {
+            mean_red += pixels[i * pixel_width + j].red;
+          }
         }
       }
-    }
-    #pragma omp section
-    {
-      for (long i = position - rad_number / 2; i < position + rad_number / 2; i++) {
-        if (i % radious == 0) {
-          i *= i / radious;
-        }
-        if (i >= 0 && i <= pixel_num) {
-          mean_green += pixels[i].green;
-        }
-      }
-    }
-    #pragma omp section
-    {
-      for (long i = position - rad_number / 2; i < position + rad_number / 2; i++) {
-        if (i % radious == 0) {
-          i *= i / radious;
-        }
-        if (i >= 0 && i <= pixel_num) {
-          mean_blue += pixels[i].blue;
+  //  }
+  //  #pragma omp section
+  //  {
+      for (long i = y; i < y + radious; i++) {
+        for (long j = x; j < x + radious; j++) {
+          if (i >= 0 && i < radious && j >= 0 && j < radious) {
+            mean_green += pixels[i * pixel_width + j].green;
+          }
         }
       }
-    }
-  }
+  //  }
+  //  #pragma omp section
+  //  {
+      for (long i = y; i < y + radious; i++) {
+        for (long j = x; j < x + radious; j++) {
+          if (i >= 0 && i < radious && j >= 0 && j < radious) {
+            mean_blue += pixels[i * pixel_width + j].blue;
+          }
+        }
+      }
+  //  }
+  //}
 
-  return pixelCreate(mean_red / rad_number, mean_green / rad_number, mean_blue / rad_number);
+  return pixelCreate(mean_red / total_radious, mean_green / total_radious, mean_blue / total_radious);
 }
 
 imageType *imageModifyRotate(const imageType *image, int degrees)
@@ -260,6 +258,7 @@ imageType *imageModifyRotate(const imageType *image, int degrees)
 
   return img_tmp;
   */
+  return NULL;
 }
 
 imageType *imageModifyBlur(const imageType *image, int blur_factor)
@@ -268,9 +267,11 @@ imageType *imageModifyBlur(const imageType *image, int blur_factor)
   
   imageType *img_tmp = imageCopy(image);
 
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for (long i = 0; i < image -> pixel_num; i++) {
-    img_tmp -> pixels[i] = *pixelGetRadiousMean(i, blur_factor, image -> pixels, image -> pixel_num, "rgb"); 
+    if (i == 0)
+      printf("Llamada\n");
+    img_tmp -> pixels[i] = *pixelGetRadiousMean(i, blur_factor, image -> pixels, image -> pixel_num, image -> width, image -> length, "rgb"); 
   }
 
   return img_tmp;
@@ -293,7 +294,7 @@ int main()
   const double timeStart = omp_get_wtime();
 
   imageType *img = imageCreate("cotorro.bmp");
-  imageType *img_blur = imageModifyBlur(img, 5);
+  imageType *img_blur = imageModifyBlur(img, 3);
   img_blur -> img_path = "image_blur.bmp";
 
   imageWrite(img_blur);
