@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
@@ -18,7 +19,7 @@ typedef struct image {
   long pixel_num;
   pixelType *pixels;
   char *img_path;
-  long width, length;
+  long width, height;
 } imageType;
 
 int die(char *mssg)
@@ -54,7 +55,7 @@ int imageTrash(imageType *image)
 
   image -> img_path = NULL;
   image -> width = 0;
-  image -> length = 0;
+  image -> height = 0;
 
   for (long i = 0; i < image -> pixel_num; i++) {
     pixelTrash(&image -> pixels[i]);
@@ -124,8 +125,8 @@ imageType *imageCreate(char *image_name)
   tmp_img -> metadata = getImageMetaData(tmp_img);
 
   tmp_img -> width = (long)tmp_img -> metadata[20] * 65536 + (long)tmp_img -> metadata[19] * 256 + (long)tmp_img -> metadata[18];
-  tmp_img -> length = (long)tmp_img -> metadata[24] * 65536 + (long)tmp_img -> metadata[23] * 256+ (long)tmp_img -> metadata[22];
-  tmp_img -> pixel_num = tmp_img -> width * tmp_img -> length;
+  tmp_img -> height = (long)tmp_img -> metadata[24] * 65536 + (long)tmp_img -> metadata[23] * 256+ (long)tmp_img -> metadata[22];
+  tmp_img -> pixel_num = tmp_img -> width * tmp_img -> height;
 
   tmp_img -> pixels = getImagePixels(tmp_img);
 
@@ -144,7 +145,7 @@ imageType *imageCopy(const imageType *image)
   memcpy(img_tmp -> pixels, image -> pixels, image -> pixel_num * sizeof(pixelType));
 
   img_tmp -> pixel_num = image -> pixel_num;
-  img_tmp -> length  = image -> length;
+  img_tmp -> height  = image -> height;
   img_tmp -> width  = image -> width;
 
   return img_tmp;
@@ -171,7 +172,7 @@ imageType *imageModifyMirror(const imageType *image, char *axis)
 
   if (strcmp(axis, "horizontal") == 0) {
     #pragma omp parallel for
-    for (long i = 0; i < image -> length; i++) {
+    for (long i = 0; i < image -> height; i++) {
       for (long j = i * image -> width + image -> width, k = i * image -> width; j >= i * image -> width ; j--, k++) {
         img_tmp -> pixels[k].red = image -> pixels[j].red;
         img_tmp -> pixels[k].green = image -> pixels[j].green;
@@ -180,7 +181,7 @@ imageType *imageModifyMirror(const imageType *image, char *axis)
     }
   } else if (strcmp(axis, "vertical") == 0) {
     //#pragma omp parallel for reduction(+ : t)
-    for (long i = image -> length - 1, t = 0; i >= 0; i--, t++) {
+    for (long i = image -> height - 1, t = 0; i >= 0; i--, t++) {
       for (long j = i * image -> width, k = t * image -> width; j <= i * image -> width + image -> width; j++, k++) {
         img_tmp -> pixels[k].red = image -> pixels[j].red;
         img_tmp -> pixels[k].green = image -> pixels[j].green;
@@ -195,7 +196,7 @@ imageType *imageModifyMirror(const imageType *image, char *axis)
 
 }
 
-pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels, long pixel_width, long pixel_length, char *components)
+pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels, long pixel_width, long pixel_height, char *components)
 {
   if (pixels == NULL) die("Null value on pixels sent to pixelGetRadiousMean");
   if (index < 0) die("Position is negative on pixelGetRadiousMean");
@@ -212,7 +213,7 @@ pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels
     {
       for (long i = y; i < y + radious; i++) {
         for (long j = x; j < x + radious; j++) {
-          if (i >= 0 && i < pixel_length && j >= 0 && j < pixel_width) {
+          if (i >= 0 && i < pixel_height && j >= 0 && j < pixel_width) {
             mean_red += pixels[i * pixel_width + j].red;
           }
         }
@@ -222,7 +223,7 @@ pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels
     {
       for (long i = y; i < y + radious; i++) {
         for (long j = x; j < x + radious; j++) {
-          if (i >= 0 && i < pixel_length && j >= 0 && j < pixel_width) {
+          if (i >= 0 && i < pixel_height && j >= 0 && j < pixel_width) {
             mean_green += pixels[i * pixel_width + j].green;
           }
         }
@@ -232,7 +233,7 @@ pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels
     {
       for (long i = y; i < y + radious; i++) {
         for (long j = x; j < x + radious; j++) {
-          if (i >= 0 && i < pixel_length && j >= 0 && j < pixel_width) {
+          if (i >= 0 && i < pixel_height && j >= 0 && j < pixel_width) {
             mean_blue += pixels[i * pixel_width + j].blue;
           }
         }
@@ -245,19 +246,27 @@ pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels
 
 imageType *imageModifyRotate(const imageType *image, int degrees)
 {
-  /*
-  if (blur_factor <= 0) die("Negative blur_factor sent in imageModifyBlur");
+  if (image == NULL) die("Null sent to imageModifyRotate");
   
   imageType *img_tmp = imageCopy(image);
+  double radians = (degrees * M_PI) / 180;
+  int x_center = image -> width / 2;
+  int y_center = image -> height / 2;
 
-  #pragma omp parallel for
-  for (long i = 0; i < image -> pixel_num; i++) {
-    img_tmp -> pixels[i] = *pixelGetRadiousMean(i, blur_factor, image -> pixels, image -> pixel_num, "rgb"); 
+  #pragma omp parallel for collapse(2)
+  for (long i = 0; i < image -> height; i++) {
+    for (long j = 0; j < image -> width; j++) {
+      int x = -sin(radians) * (i - y_center) + cos(radians) * (j - x_center) + x_center;
+      int y = cos(radians) * (i - y_center) + sin(radians) * (j - x_center) + y_center;
+      if (x >= 0 && x < image -> width && y >= 0 && y < image -> height) {
+        img_tmp -> pixels[i * image -> width + j] = image -> pixels[y * image -> width + x];
+      } else {
+        img_tmp -> pixels[i * image -> width + j] = *pixelCreate(0, 0, 0);
+      }
+    }
   }
 
   return img_tmp;
-  */
-  return NULL;
 }
 
 imageType *imageModifyBlur(const imageType *image, int blur_factor)
@@ -268,7 +277,7 @@ imageType *imageModifyBlur(const imageType *image, int blur_factor)
 
   #pragma omp parallel for
   for (long i = 0; i < image -> pixel_num; i++) {
-    img_tmp -> pixels[i] = *pixelGetRadiousMean(i, blur_factor, image -> pixels, image -> width, image -> length, "rgb"); 
+    img_tmp -> pixels[i] = *pixelGetRadiousMean(i, blur_factor, image -> pixels, image -> width, image -> height, "rgb"); 
   }
 
   return img_tmp;
@@ -291,13 +300,13 @@ int main()
   const double timeStart = omp_get_wtime();
 
   imageType *img = imageCreate("casitas.bmp");
-  imageType *img_blur = imageModifyBlur(img, 10);
-  img_blur -> img_path = "image_blur.bmp";
+  imageType *img_rotate = imageModifyRotate(img, 19 * 18);
+  img_rotate -> img_path = "image_rotate_20.bmp";
 
-  imageWrite(img_blur);
+  imageWrite(img_rotate);
 
   imageTrash(img);
-  imageTrash(img_blur);
+  imageTrash(img_rotate);
 
   const double timeEnd = omp_get_wtime();
   

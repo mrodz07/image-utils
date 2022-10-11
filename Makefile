@@ -1,4 +1,4 @@
-CC_FLAGS = -Wall -Wextra -Wpedantic -fopenmp -g -o
+CC_FLAGS = -Wall -Wextra -Wpedantic -lm -fopenmp -g -o
 OUT_NAME = output
 
 default: run
