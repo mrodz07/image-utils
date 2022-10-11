@@ -300,8 +300,8 @@ int main()
   const double timeStart = omp_get_wtime();
 
   imageType *img = imageCreate("casitas.bmp");
-  imageType *img_rotate = imageModifyRotate(img, 19 * 18);
-  img_rotate -> img_path = "image_rotate_20.bmp";
+  imageType *img_rotate = imageModifyRotate(img, 20);
+  img_rotate -> img_path = "image_rotated.bmp";
 
   imageWrite(img_rotate);
 
