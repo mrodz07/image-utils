@@ -1,3 +1,8 @@
+/*
+* mariorodriguez.xyz
+*
+* Programa para editar imágenes BMP, agregándoles efectos
+*/
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 
+// Número de threads que ocupará el programa y el tamaño de los metadatos que se ignorarán cuando la imagen se copie
 #define OMP_NUM_THREADS 75
 #define METADATA_SIZE 138
 
@@ -49,6 +55,7 @@ int pixelTrash(pixelType *pixel)
   return 0;
 }
 
+// Libera la imagen de la memoria del programa, no la borra del disco
 int imageTrash(imageType *image)
 {
   if (image == NULL) die("Null argument passed to imageTrash");
@@ -101,6 +108,7 @@ pixelType* getImagePixels(imageType *image)
   // Posicionamos el apuntador de la imagen a la posición después de leer los metadatos
   fseek(ip, METADATA_SIZE, SEEK_SET);
 
+  // Leemos los datos 'en bruto' de la imagen
   for (long i = 0; i < image -> pixel_num; i++) {
     red = fgetc(ip);
     green = fgetc(ip);
@@ -124,6 +132,7 @@ imageType *imageCreate(char *image_name)
 
   tmp_img -> metadata = getImageMetaData(tmp_img);
 
+  // Obtenemos los valores de anchura y altura de los metadatos de la imagen
   tmp_img -> width = (long)tmp_img -> metadata[20] * 65536 + (long)tmp_img -> metadata[19] * 256 + (long)tmp_img -> metadata[18];
   tmp_img -> height = (long)tmp_img -> metadata[24] * 65536 + (long)tmp_img -> metadata[23] * 256+ (long)tmp_img -> metadata[22];
   tmp_img -> pixel_num = tmp_img -> width * tmp_img -> height;
@@ -151,6 +160,7 @@ imageType *imageCopy(const imageType *image)
   return img_tmp;
 }
 
+// La imagen se convierte en escala de grises
 imageType *imageModifyGray(const imageType *image)
 {
   imageType *img_tmp = imageCopy(image);
@@ -166,6 +176,7 @@ imageType *imageModifyGray(const imageType *image)
   return img_tmp;
 }
 
+// 'Refleja' la imagen en el eje que le pasemos
 imageType *imageModifyMirror(const imageType *image, char *axis)
 {
   imageType *img_tmp = imageCopy(image);
@@ -196,6 +207,7 @@ imageType *imageModifyMirror(const imageType *image, char *axis)
 
 }
 
+// Calcula la media de los pixeles, usado para desenfoque gaussiano
 pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels, long pixel_width, long pixel_height, char *components)
 {
   if (pixels == NULL) die("Null value on pixels sent to pixelGetRadiousMean");
@@ -244,6 +256,7 @@ pixelType *pixelGetRadiousMean(long index, long radious, const pixelType *pixels
   return pixelCreate(mean_red / total_pixels, mean_green / total_pixels, mean_blue / total_pixels);
 }
 
+// Rota la imagen el número de grados que se indique
 imageType *imageModifyRotate(const imageType *image, int degrees)
 {
   if (image == NULL) die("Null sent to imageModifyRotate");
@@ -269,6 +282,7 @@ imageType *imageModifyRotate(const imageType *image, int degrees)
   return img_tmp;
 }
 
+// Aplica a la imagen desenfoque gaussiano
 imageType *imageModifyBlur(const imageType *image, int blur_factor)
 {
   if (blur_factor <= 0) die("Negative blur_factor sent in imageModifyBlur");
@@ -299,6 +313,7 @@ int main()
 {
   const double timeStart = omp_get_wtime();
 
+  /*
   imageType *img = imageCreate("casitas.bmp");
   imageType *img_rotate = imageModifyRotate(img, 20);
   img_rotate -> img_path = "image_rotated.bmp";
@@ -307,10 +322,11 @@ int main()
 
   imageTrash(img);
   imageTrash(img_rotate);
+  */
 
   const double timeEnd = omp_get_wtime();
   
-  printf("time: %f\n", timeEnd - timeStart);
+  printf("Execution time: %f\n", timeEnd - timeStart);
 
   return 0;
 }
