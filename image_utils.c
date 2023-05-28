@@ -1,6 +1,4 @@
 /*
-* mariorodriguez.xyz
-*
 * Programa para editar imágenes BMP, agregándoles efectos
 */
 #include <math.h>
