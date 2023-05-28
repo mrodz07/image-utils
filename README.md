@@ -1,19 +1,19 @@
-# Editor de imágenes
+# Image editor
 
-Editor simple de imagenes con terminación BMP. Tiene la habilidad de rotar, desenfocar y aplicar escala de grises a las imágenes.
+Practice for multithread programming. Made for images on the BMP format. Has the ability to rotate, unfocus and apply a scales of gray effect to the images.
 
-## Cómo compilar y ejecutar
+## How to run
 
-Debes instalar Make y OpenMP para que el programa tenga concurrencia, después puedes ejecutar el siguiente comando dentro del directorio del proyecto:
+Install Make and OpenMP, then execute the next command from the project's root
 
     [user@computer]$ make
 
-El programa se ejecutará en automático, si quieres llamarlo desde la linea de comandos puedes hacerlo como cualquier otro programa
+The program will execute automatically, you can call it with the next command
 
     ./output
 
-## Cómo limpiar el directorio
+## How to clean the directory
 
-Ejecutamos dentro del mismo:
+Execute this command inside the project's root
 
     [user@computer]$ make clean
